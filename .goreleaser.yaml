@@ -1,0 +1,47 @@
+version: 2
+
+project_name: tekton-lsp
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/tekton-lsp
+    binary: tekton-lsp
+    env:
+      - CGO_ENABLED=1
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+archives:
+  - formats: ['tar.gz']
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^fix: lint'
+      - '^fix: trailing'
+      - '^fix: gofmt'
+      - '^fix: goimports'
+
+release:
+  github:
+    owner: vdemeester
+    name: tekton-lsp-go
+  draft: false
+  prerelease: auto

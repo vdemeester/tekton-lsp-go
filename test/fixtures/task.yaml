@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-task
+spec:
+  params:
+    - name: image
+      type: string
+      description: The image to build
+  steps:
+    - name: build
+      image: golang:1.25
+      script: |
+        go build ./...

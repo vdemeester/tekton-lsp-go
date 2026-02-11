@@ -4,6 +4,8 @@ import (
 	"github.com/tliron/commonlog"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/tliron/glsp/server"
+
+	"github.com/vdemeester/tekton-lsp-go/pkg/cache"
 )
 
 var log = commonlog.GetLogger("tekton-lsp")
@@ -14,6 +16,7 @@ type Server struct {
 	version string
 	glsp    *server.Server
 	handler protocol.Handler
+	cache   *cache.Cache
 }
 
 // New creates a new Tekton LSP server
@@ -21,17 +24,24 @@ func New(name, version string) *Server {
 	s := &Server{
 		name:    name,
 		version: version,
+		cache:   cache.New(),
 	}
 
 	// Initialize handler with lifecycle methods
 	s.handler = protocol.Handler{
-		Initialize:            s.initialize,
-		Initialized:           s.initialized,
-		Shutdown:              s.shutdown,
-		SetTrace:              s.setTrace,
-		TextDocumentDidOpen:   s.didOpen,
-		TextDocumentDidChange: s.didChange,
-		TextDocumentDidClose:  s.didClose,
+		Initialize:                 s.initialize,
+		Initialized:                s.initialized,
+		Shutdown:                   s.shutdown,
+		SetTrace:                   s.setTrace,
+		TextDocumentDidOpen:        s.didOpen,
+		TextDocumentDidChange:      s.didChange,
+		TextDocumentDidClose:       s.didClose,
+		TextDocumentCompletion:     s.textDocumentCompletion,
+		TextDocumentHover:          s.textDocumentHover,
+		TextDocumentDocumentSymbol: s.textDocumentDocumentSymbol,
+		TextDocumentFormatting:     s.textDocumentFormatting,
+		TextDocumentDefinition:     s.textDocumentDefinition,
+		TextDocumentCodeAction:     s.textDocumentCodeAction,
 	}
 
 	// Create GLSP server
