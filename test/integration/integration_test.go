@@ -3,6 +3,7 @@ package integration
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,14 +13,19 @@ import (
 var testBinary string
 
 func TestMain(m *testing.M) {
-	// Build the binary once using a temp dir for portability.
+	// Build the binary once using a temp dir.
 	tmpDir, err := os.MkdirTemp("", "tekton-lsp-test-*")
 	if err != nil {
 		panic("mkdtemp: " + err.Error())
 	}
 
 	binary := tmpDir + "/tekton-lsp"
-	cmd := exec.Command("go", "build", "-o", binary, "github.com/vdemeester/tekton-lsp-go/cmd/tekton-lsp")
+
+	// Find module root (go.mod directory).
+	modRoot := findModuleRoot()
+
+	cmd := exec.Command("go", "build", "-o", binary, "./cmd/tekton-lsp")
+	cmd.Dir = modRoot
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		panic("failed to build binary: " + err.Error())
@@ -30,6 +36,23 @@ func TestMain(m *testing.M) {
 
 	_ = os.RemoveAll(tmpDir)
 	os.Exit(code)
+}
+
+func findModuleRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic("getwd: " + err.Error())
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			panic("could not find go.mod")
+		}
+		dir = parent
+	}
 }
 
 func startClient(t *testing.T) *Client {
