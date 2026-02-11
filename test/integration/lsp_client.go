@@ -143,7 +143,7 @@ func (c *Client) CodeAction(uri string, startLine, startChar, endLine, endChar u
 func (c *Client) Shutdown() error {
 	c.Request("shutdown", nil)
 	c.Notify("exit", nil)
-	c.stdin.Close()
+	_ = c.stdin.Close()
 	return nil
 }
 

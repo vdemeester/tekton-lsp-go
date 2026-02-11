@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
 	"testing"
@@ -24,7 +23,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	os.Remove(binary)
+	_ = os.Remove(binary)
 	os.Exit(code)
 }
 
@@ -409,8 +408,4 @@ func extractLabels(items []any) []string {
 	return labels
 }
 
-// prettyJSON is a debug helper.
-func prettyJSON(v any) string {
-	b, _ := json.MarshalIndent(v, "", "  ")
-	return string(b)
-}
+
