@@ -9,11 +9,13 @@ import (
 func (s *Server) didOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	uri := params.TextDocument.URI
 	text := params.TextDocument.Text
+	langID := params.TextDocument.LanguageID
+	version := params.TextDocument.Version
 
 	log.Infof("Document opened: %s (%d bytes)", uri, len(text))
 
-	// TODO: Parse document with tree-sitter
-	// TODO: Store in document cache
+	s.cache.Insert(uri, langID, version, text)
+
 	// TODO: Run validation and send diagnostics
 
 	return nil
@@ -22,20 +24,18 @@ func (s *Server) didOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 // didChange handles the textDocument/didChange notification
 func (s *Server) didChange(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
 	uri := params.TextDocument.URI
+	version := params.TextDocument.Version
 
-	log.Infof("Document changed: %s", uri)
+	log.Infof("Document changed: %s (v%d)", uri, version)
 
-	// With TextDocumentSyncKindFull, there's only one change with the full content
+	// With TextDocumentSyncKindFull, there's one change with full content
 	if len(params.ContentChanges) > 0 {
-		// Get the new full content
 		if textChange, ok := params.ContentChanges[0].(protocol.TextDocumentContentChangeEvent); ok {
-			log.Debugf("New content: %d bytes", len(textChange.Text))
-
-			// TODO: Re-parse document with tree-sitter
-			// TODO: Update document cache
-			// TODO: Re-run validation and send diagnostics
+			s.cache.Update(uri, version, textChange.Text)
 		}
 	}
+
+	// TODO: Re-run validation and send diagnostics
 
 	return nil
 }
@@ -46,7 +46,7 @@ func (s *Server) didClose(context *glsp.Context, params *protocol.DidCloseTextDo
 
 	log.Infof("Document closed: %s", uri)
 
-	// TODO: Remove from document cache
+	s.cache.Remove(uri)
 
 	return nil
 }

@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-pipeline
+  namespace: default
+spec:
+  params:
+    - name: repo-url
+      type: string
+  tasks:
+    - name: build
+      taskRef:
+        name: build-task
+    - name: test
+      taskRef:
+        name: test-task
+      runAfter:
+        - build
