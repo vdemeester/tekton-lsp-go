@@ -407,5 +407,3 @@ func extractLabels(items []any) []string {
 	}
 	return labels
 }
-
-
