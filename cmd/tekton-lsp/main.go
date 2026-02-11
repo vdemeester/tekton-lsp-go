@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/tliron/commonlog"
-	"github.com/vdemeester/tekton-lsp-go/pkg/server"
-
 	_ "github.com/tliron/commonlog/simple"
+
+	"github.com/vdemeester/tekton-lsp-go/pkg/server"
 )
 
 const (
@@ -19,7 +19,6 @@ const (
 var (
 	showVersion = flag.Bool("version", false, "Show version and exit")
 	logLevel    = flag.Int("log-level", 0, "Logging verbosity (0=errors, 1=info, 2=debug, 3=trace)")
-	stdio       = flag.Bool("stdio", true, "Use stdio transport (default)")
 	tcp         = flag.String("tcp", "", "Use TCP transport (e.g., 'localhost:8080')")
 )
 
