@@ -151,6 +151,13 @@ func validatePipeline(doc *parser.Document) []Diagnostic {
 		})
 	}
 
+	// Validate individual tasks (taskRef.name, duplicate names)
+	diags = append(diags, validatePipelineTasks(tasks)...)
+
+	// Validate param references
+	declaredParams := collectDeclaredParams(spec)
+	diags = append(diags, findParamRefs(tasks, declaredParams)...)
+
 	return diags
 }
 
@@ -195,6 +202,13 @@ func validateTask(doc *parser.Document) []Diagnostic {
 			Message:  "Task must have at least one step",
 		})
 	}
+
+	// Validate step images
+	diags = append(diags, validateStepImages(steps)...)
+
+	// Validate param references
+	declaredParams := collectDeclaredParams(spec)
+	diags = append(diags, findParamRefs(spec, declaredParams)...)
 
 	return diags
 }

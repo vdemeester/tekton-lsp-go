@@ -3,6 +3,8 @@ package server
 import (
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
+
+	"github.com/vdemeester/tekton-lsp-go/pkg/workspace"
 )
 
 // initialize handles the initialize request from the client
@@ -39,11 +41,17 @@ func (s *Server) initialize(context *glsp.Context, params *protocol.InitializePa
 
 	// Code Actions
 	capabilities.CodeActionProvider = true
-	// capabilities.HoverProvider = true
-	// capabilities.DefinitionProvider = true
-	// capabilities.DocumentSymbolProvider = true
-	// capabilities.DocumentFormattingProvider = true
-	// capabilities.CodeActionProvider = true
+	// Scan workspace on init if rootUri is provided.
+	if params.RootURI != nil {
+		go func() {
+			n, err := workspace.Scan(*params.RootURI, s.cache)
+			if err != nil {
+				log.Warningf("Workspace scan error: %v", err)
+			} else {
+				log.Infof("Indexed %d YAML files from workspace", n)
+			}
+		}()
+	}
 
 	return protocol.InitializeResult{
 		Capabilities: capabilities,
