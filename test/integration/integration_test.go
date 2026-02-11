@@ -12,9 +12,14 @@ import (
 var testBinary string
 
 func TestMain(m *testing.M) {
-	// Build the binary once.
-	binary := "../../tekton-lsp-test"
-	cmd := exec.Command("go", "build", "-o", binary, "../../cmd/tekton-lsp")
+	// Build the binary once using a temp dir for portability.
+	tmpDir, err := os.MkdirTemp("", "tekton-lsp-test-*")
+	if err != nil {
+		panic("mkdtemp: " + err.Error())
+	}
+
+	binary := tmpDir + "/tekton-lsp"
+	cmd := exec.Command("go", "build", "-o", binary, "github.com/vdemeester/tekton-lsp-go/cmd/tekton-lsp")
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		panic("failed to build binary: " + err.Error())
@@ -23,7 +28,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	_ = os.Remove(binary)
+	_ = os.RemoveAll(tmpDir)
 	os.Exit(code)
 }
 
