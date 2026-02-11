@@ -3,8 +3,8 @@ package parser
 import (
 	"fmt"
 
-	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_yaml "github.com/tree-sitter-grammars/tree-sitter-yaml/bindings/go"
+	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 // ParseYAML parses YAML content into a Document with position tracking using tree-sitter.
