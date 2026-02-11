@@ -1,6 +1,6 @@
-# Binaries
-tekton-lsp
-tekton-lsp-go
+# Binaries (root only, not cmd/ subdirs)
+/tekton-lsp
+/tekton-lsp-go
 *.exe
 *.exe~
 *.dll

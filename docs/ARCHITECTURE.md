@@ -19,74 +19,66 @@ tekton-lsp-go is a Language Server Protocol (LSP) implementation for Tekton YAML
 
 - **Validation**: Custom Tekton validation + [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3)
   - Tree-sitter for AST and positions
-  - yaml.v3 for structure validation
+  - yaml.v3 for structure validation and formatting
   - Tekton-specific semantic validation
 
 ## Project Structure
 
 ```
 tekton-lsp-go/
-├── cmd/
-│   └── tekton-lsp/          # Binary entry point
-│       └── main.go          # CLI and server initialization
+├── cmd/tekton-lsp/            # Binary entry point
+│   └── main.go                # CLI flags, server startup
 │
-├── pkg/                     # Public API packages
-│   ├── server/              # LSP server implementation
-│   │   ├── server.go        # Server creation and transport
-│   │   ├── lifecycle.go     # LSP lifecycle (initialize, shutdown)
-│   │   └── document.go      # Document sync (didOpen, didChange)
+├── pkg/                       # Public API packages
+│   ├── server/                # LSP server (GLSP handlers)
+│   │   ├── server.go          # Server creation, handler wiring
+│   │   ├── lifecycle.go       # initialize, initialized, shutdown
+│   │   ├── document.go        # didOpen, didChange, didClose
+│   │   ├── diagnostics.go     # publishDiagnostics
+│   │   ├── completion.go      # textDocument/completion
+│   │   ├── hover.go           # textDocument/hover
+│   │   ├── symbols.go         # textDocument/documentSymbol
+│   │   ├── formatting.go      # textDocument/formatting
+│   │   ├── definition.go      # textDocument/definition
+│   │   └── actions.go         # textDocument/codeAction
 │   │
-│   ├── parser/              # YAML parsing with tree-sitter
-│   │   ├── parser.go        # Parser wrapper
-│   │   ├── ast.go           # AST types
-│   │   └── positions.go     # Position conversion (LSP ↔ tree-sitter)
+│   ├── parser/                # YAML parsing (tree-sitter)
+│   │   ├── parser.go          # ParseYAML, tree-sitter wrapper
+│   │   └── ast.go             # Document, Node, Range, Position
 │   │
-│   ├── cache/               # Document caching
-│   │   ├── document.go      # Document state
-│   │   └── cache.go         # Document cache management
+│   ├── cache/                 # Thread-safe document cache
+│   │   └── cache.go           # Insert/Get/Update/Remove/AllParsed
 │   │
-│   ├── workspace/           # Workspace indexing
-│   │   ├── index.go         # Cross-file reference index
-│   │   └── scanner.go       # Workspace scanner
+│   ├── validator/             # Tekton validation
+│   │   └── validator.go       # Pipeline/Task/metadata validation
 │   │
-│   ├── validator/           # Tekton validation
-│   │   ├── validator.go     # Main validator
-│   │   ├── pipeline.go      # Pipeline validation
-│   │   ├── task.go          # Task validation
-│   │   └── diagnostics.go   # Diagnostic conversion
+│   ├── completion/            # Context-aware completions
+│   │   ├── provider.go        # Complete(), context detection
+│   │   └── schemas.go         # Field schemas per context
 │   │
-│   ├── completion/          # Completion provider
-│   │   ├── provider.go      # Completion logic
-│   │   ├── schemas.go       # Tekton field schemas
-│   │   └── context.go       # Context analysis (cursor position)
+│   ├── hover/                 # Hover documentation
+│   │   ├── provider.go        # Hover(), node lookup
+│   │   └── docs.go            # 30+ field documentation entries
 │   │
-│   ├── hover/               # Hover provider
-│   │   ├── provider.go      # Hover logic
-│   │   └── docs.go          # Documentation lookup
+│   ├── definition/            # Go-to-definition
+│   │   └── provider.go        # taskRef/pipelineRef resolution
 │   │
-│   ├── definition/          # Go-to-definition provider
-│   │   ├── provider.go      # Definition resolution
-│   │   └── references.go    # Reference tracking
+│   ├── symbols/               # Document outline
+│   │   └── provider.go        # DocumentSymbols(), AST → outline
 │   │
-│   ├── symbols/             # Document symbols provider
-│   │   └── provider.go      # Symbol extraction
+│   ├── formatting/            # YAML formatting
+│   │   └── formatter.go       # Format() via yaml.v3
 │   │
-│   ├── formatting/          # YAML formatting provider
-│   │   └── formatter.go     # Format logic
-│   │
-│   └── actions/             # Code actions provider
-│       └── provider.go      # Quick fixes
-│
-├── internal/                # Private packages
-│   └── tekton/              # Tekton types (may become separate module)
-│       ├── types.go         # Common types
-│       └── v1/              # Tekton v1 API
-│           ├── pipeline.go  # Pipeline types
-│           └── task.go      # Task types
+│   └── actions/               # Code actions (quick fixes)
+│       └── provider.go        # Add missing / remove unknown
 │
 └── test/
-    ├── integration/         # Integration tests
-    └── fixtures/            # Test YAML files
+    ├── integration/           # LSP protocol tests (end-to-end)
+    │   ├── lsp_client.go      # JSON-RPC client over stdio
+    │   └── integration_test.go # 14 protocol tests
+    └── fixtures/              # Sample YAML files
+        ├── pipeline.yaml
+        └── task.yaml
 ```
 
 ## Component Interaction
@@ -100,98 +92,52 @@ tekton-lsp-go/
                  ▼
 ┌─────────────────────────────────────────────┐
 │          GLSP Server (pkg/server/)          │
-│                                              │
-│  ┌──────────────┐   ┌──────────────┐       │
-│  │  Lifecycle   │   │  Document    │       │
-│  │   Handlers   │   │   Handlers   │       │
-│  └──────────────┘   └──────────────┘       │
+│  9 handlers: completion, hover, symbols,     │
+│  formatting, definition, codeAction,         │
+│  diagnostics, didOpen/Change/Close           │
 └────────────┬────────────────────────────────┘
              │
              ▼
 ┌─────────────────────────────────────────────┐
 │         Document Cache (pkg/cache/)         │
-│                                              │
-│  ┌────────┐  ┌────────┐  ┌────────┐        │
-│  │ Doc 1  │  │ Doc 2  │  │ Doc N  │        │
-│  │ + AST  │  │ + AST  │  │ + AST  │        │
-│  └────────┘  └────────┘  └────────┘        │
+│  Thread-safe, stores content + parsed AST    │
 └────────────┬────────────────────────────────┘
              │
-    ┌────────┼────────┐
-    ▼        ▼        ▼
-┌────────┐ ┌────────┐ ┌────────┐
-│ Parser │ │Validator│ │Features│
-│        │ │        │ │Provider│
-│tree-   │ │Tekton  │ │- Hover │
-│sitter  │ │Schema  │ │- Goto  │
-│+ yaml  │ │Checks  │ │- Comp  │
-└────────┘ └────────┘ └────────┘
-```
-
-## LSP Lifecycle
-
-```
-1. Client starts server
-   ↓
-2. Client → Server: initialize
-   ↓
-3. Server → Client: initialize result (capabilities)
-   ↓
-4. Client → Server: initialized
-   ↓
-5. Client → Server: textDocument/didOpen
-   ↓
-6. Server parses document, runs validation
-   ↓
-7. Server → Client: textDocument/publishDiagnostics
-   ↓
-8. Client → Server: textDocument/completion (on user input)
-   ↓
-9. Server → Client: completion items
-   ↓
-   ...
-   ↓
-10. Client → Server: shutdown
-    ↓
-11. Client → Server: exit
+    ┌────────┼────────┬────────┐
+    ▼        ▼        ▼        ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│ Parser │ │Validator│ │Compltn │ │ Hover  │
+│tree-   │ │Tekton  │ │Schema  │ │ Docs   │
+│sitter  │ │checks  │ │context │ │ lookup │
+└────────┘ └────────┘ └────────┘ └────────┘
+             ┌────────┐ ┌────────┐ ┌────────┐
+             │Symbols │ │ Format │ │Actions │
+             │outline │ │yaml.v3 │ │quickfix│
+             └────────┘ └────────┘ └────────┘
+             ┌────────┐
+             │ Defn   │
+             │taskRef │
+             └────────┘
 ```
 
 ## Feature Implementation Status
 
-### Phase 1: Foundation ✅ (In Progress)
-- [x] LSP server scaffold with GLSP
-- [x] Document lifecycle (didOpen, didChange, didClose)
-- [ ] Tree-sitter YAML parser integration
-- [ ] Document caching
+All 9 LSP features implemented with TDD:
 
-### Phase 2: Diagnostics
-- [ ] Tekton type definitions
-- [ ] Pipeline validation
-- [ ] Task validation
-- [ ] Diagnostic publishing
-
-### Phase 3: Completion
-- [ ] Schema definitions
-- [ ] Context analysis
-- [ ] Completion provider
-
-### Phase 4: Hover
-- [ ] Documentation database
-- [ ] Hover provider
-
-### Phase 5: Navigation
-- [ ] Workspace indexing
-- [ ] Go-to-definition
-- [ ] Document symbols
-
-### Phase 6: Advanced
-- [ ] YAML formatting
-- [ ] Code actions
-
-### Phase 7: Testing
-- [ ] Integration tests
-- [ ] Protocol tests
-- [ ] VS Code extension
+| Phase | Feature | Package | Tests | Status |
+|-------|---------|---------|-------|--------|
+| 1 | Tree-sitter YAML parsing | `pkg/parser` | 8 | ✅ |
+| 1 | Document cache | `pkg/cache` | 9 | ✅ |
+| 1 | Document sync | `pkg/server` | 2 | ✅ |
+| 2 | Validation & diagnostics | `pkg/validator` + server | 17 | ✅ |
+| 3 | Completion | `pkg/completion` + server | 10 | ✅ |
+| 4 | Hover | `pkg/hover` | 8 | ✅ |
+| 5 | Document symbols | `pkg/symbols` | 5 | ✅ |
+| 5 | Go-to-definition | `pkg/definition` | 4 | ✅ |
+| 6 | Formatting | `pkg/formatting` | 4 | ✅ |
+| 6 | Code actions | `pkg/actions` | 5 | ✅ |
+| 7 | Integration tests | `test/integration` | 14 | ✅ |
+| | **Total** | | **86** | ✅ |
 
 ## Design Decisions
 
@@ -205,41 +151,29 @@ tekton-lsp-go/
 ### Why tree-sitter?
 - Incremental parsing (fast updates)
 - Precise position tracking
-- Error recovery
+- Error recovery for partial/invalid YAML
 - Used by many editors (Neovim, Emacs)
 
 ### Why minimal Tekton types?
 - Avoid heavy kubernetes dependencies
-- Fast builds (~10-15MB binary vs ~50MB+ with k8s)
+- Fast builds (~10MB binary vs ~50MB+ with k8s)
 - Custom validation for LSP needs
 - Can add tektoncd/pipeline later if beneficial
-
-## Performance Targets
-
-Based on Rust implementation benchmarks:
-
-| Operation | Target | Notes |
-|-----------|--------|-------|
-| didOpen | < 50ms | Parse + cache |
-| didChange | < 10ms | Incremental parse |
-| diagnostics | < 100ms | Validation |
-| completion | < 50ms | Schema lookup |
-| hover | < 20ms | Doc lookup |
-| definition | < 50ms | Reference resolution |
 
 ## Dependencies
 
 ### Core
 - `github.com/tliron/glsp` - LSP framework
-- `github.com/tree-sitter/go-tree-sitter` - Tree-sitter bindings
-- `gopkg.in/yaml.v3` - YAML validation
+- `github.com/tree-sitter/go-tree-sitter` v0.24.0 - Tree-sitter bindings
+- `github.com/tree-sitter-grammars/tree-sitter-yaml` - YAML grammar
+- `gopkg.in/yaml.v3` - YAML formatting
 
 ### Testing
 - `github.com/stretchr/testify` - Test assertions
 
 ### Build
-- Go 1.23+
-- C compiler (for tree-sitter CGO)
+- Go 1.25
+- C compiler (CGO for tree-sitter)
 
 ## References
 
