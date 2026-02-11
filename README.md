@@ -1,32 +1,30 @@
 # Tekton Language Server Protocol (LSP) - Go Implementation
 
-> A Go-based Language Server Protocol implementation for Tekton YAML files providing intelligent IDE features like diagnostics, completion, hover documentation, and navigation.
+> A Language Server Protocol implementation for Tekton YAML files providing intelligent IDE features: diagnostics, completion, hover, navigation, formatting, and code actions.
 
+[![CI](https://github.com/vdemeester/tekton-lsp-go/actions/workflows/ci.yaml/badge.svg)](https://github.com/vdemeester/tekton-lsp-go/actions/workflows/ci.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Go](https://img.shields.io/badge/go-1.23%2B-blue.svg)](https://go.dev/)
-[![LSP](https://img.shields.io/badge/LSP-3.17-green.svg)](https://microsoft.github.io/language-server-protocol/)
+[![Go](https://img.shields.io/badge/go-1.25-blue.svg)](https://go.dev/)
+[![LSP](https://img.shields.io/badge/LSP-3.16-green.svg)](https://microsoft.github.io/language-server-protocol/)
 
-**Status**: 🚧 **Under Active Development** 🚧
+A port of the [Rust implementation](https://github.com/vdemeester/tekton-lsp) to Go for better alignment with the Tekton ecosystem and easier contribution to the tektoncd organization.
 
-This is a port of the [Rust implementation](https://github.com/vdemeester/tekton-lsp) to Go for better alignment with the Tekton ecosystem and easier contribution to the tektoncd organization.
+## Features
 
-## Roadmap
-
-- [x] Project initialization
-- [ ] **Phase 1**: LSP server scaffold with document management (Week 1)
-- [ ] **Phase 2**: Diagnostics & validation (Week 2)
-- [ ] **Phase 3**: Completion provider (Week 3)
-- [ ] **Phase 4**: Hover documentation (Week 4)
-- [ ] **Phase 5**: Navigation (go-to-definition, symbols) (Week 5)
-- [ ] **Phase 6**: Advanced features (formatting, code actions) (Week 6)
-- [ ] **Phase 7**: Testing & integration (Week 7-8)
-
-See [implementation plan](docs/IMPLEMENTATION_PLAN.md) for details.
+| Feature | Description |
+|---------|-------------|
+| **Diagnostics** | Validates Pipeline/Task structure, required fields, unknown fields |
+| **Completion** | Context-aware field suggestions for Pipeline, Task, Step, Metadata |
+| **Hover** | Documentation for 30+ Tekton fields with markdown formatting |
+| **Go-to-definition** | Jump from `taskRef`/`pipelineRef` to the referenced resource |
+| **Document symbols** | Outline view of Pipeline tasks, Task steps, params |
+| **Formatting** | Consistent YAML indentation (configurable) |
+| **Code actions** | Quick fixes: add missing fields, remove unknown fields |
 
 ## Quick Start
 
 **Prerequisites:**
-- Go 1.23+
+- Go 1.25+
 - C compiler (for tree-sitter CGO bindings)
 
 **Build:**
@@ -34,79 +32,90 @@ See [implementation plan](docs/IMPLEMENTATION_PLAN.md) for details.
 go build -o tekton-lsp ./cmd/tekton-lsp
 ```
 
-**Run:**
+**Run (stdio, default):**
 ```bash
 ./tekton-lsp
+```
+
+**Run (TCP):**
+```bash
+./tekton-lsp --tcp --address :7999
+```
+
+**Test:**
+```bash
+go test -race ./...
+```
+
+## Editor Setup
+
+### VS Code
+
+Add to `.vscode/settings.json`:
+```json
+{
+  "yaml.customTags": [],
+  "tekton-lsp.path": "/path/to/tekton-lsp"
+}
+```
+
+### Neovim (nvim-lspconfig)
+
+```lua
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "yaml",
+  callback = function()
+    vim.lsp.start({
+      name = "tekton-lsp",
+      cmd = { "/path/to/tekton-lsp" },
+    })
+  end,
+})
 ```
 
 ## Architecture
 
 ```
-tekton-lsp-go/
-├── cmd/tekton-lsp/      # Binary entry point
-├── pkg/
-│   ├── server/          # GLSP server implementation
-│   ├── parser/          # Tree-sitter YAML parser
-│   ├── cache/           # Document caching
-│   ├── workspace/       # Workspace indexing
-│   ├── validator/       # Tekton validation
-│   ├── completion/      # Completion provider
-│   ├── hover/           # Hover provider
-│   ├── definition/      # Go-to-definition
-│   ├── symbols/         # Document symbols
-│   ├── formatting/      # YAML formatting
-│   └── actions/         # Code actions
-└── internal/tekton/     # Tekton types
+pkg/
+├── server/       # GLSP server — 9 LSP handlers
+├── parser/       # tree-sitter YAML → AST with positions
+├── cache/        # Thread-safe document cache
+├── validator/    # Pipeline/Task structure validation
+├── completion/   # Schema-based context-aware completions
+├── hover/        # Field documentation (30+ entries)
+├── definition/   # taskRef/pipelineRef → definition resolution
+├── symbols/      # Document outline extraction
+├── formatting/   # YAML reformatting via yaml.v3
+└── actions/      # Quick fix code actions
+test/
+└── integration/  # LSP protocol tests (14 end-to-end tests)
 ```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Technology Stack
 
-- **LSP Framework**: [GLSP](https://github.com/tliron/glsp) - Language Server Protocol SDK for Go
-- **YAML Parser**: [tree-sitter](https://github.com/tree-sitter/go-tree-sitter) with [tree-sitter-yaml](https://github.com/tree-sitter-grammars/tree-sitter-yaml)
-- **Validation**: Custom Tekton validation + gopkg.in/yaml.v3
-- **Testing**: Standard library + testify
+- **LSP Framework**: [GLSP](https://github.com/tliron/glsp) — complete LSP 3.16+ with stdio/TCP transports
+- **YAML Parser**: [tree-sitter](https://github.com/tree-sitter/go-tree-sitter) — incremental parsing, precise positions, error recovery
+- **Formatting**: [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) — consistent indentation
+- **Testing**: 86 tests (72 unit + 14 integration) with `-race`
 
-## Rust vs Go
+## Why Go?
 
-This is a port from the feature-complete [Rust implementation](https://github.com/vdemeester/tekton-lsp). 
-
-**Why Go?**
 - Better alignment with Tekton ecosystem (tektoncd is Go-centric)
 - Easier contribution to tektoncd organization
 - Leverages Go community familiarity
-- Potential to reuse tektoncd/pipeline types
-
-**Trade-offs:**
-- Larger binary size (~15-30MB vs ~5-10MB)
-- Slightly higher memory usage (GC overhead)
-- Same feature parity goal
+- ~10MB binary (minimal deps, no k8s dependency)
 
 ## Contributing
 
-Contributions welcome! This project is in active development. See the [implementation plan](docs/IMPLEMENTATION_PLAN.md) for current status and next steps.
-
-### Development Workflow
-
 1. Fork the repository
 2. Create a feature branch
-3. Write tests first
+3. **Write tests first** (TDD)
 4. Implement features
-5. Run `go test ./...`
+5. Run `go test -race ./...`
 6. Submit a pull request
 
 ## License
 
-Apache License 2.0 - See [LICENSE](LICENSE) for details.
-
-## References
-
-- [Tekton Documentation](https://tekton.dev/)
-- [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
-- [GLSP Framework](https://github.com/tliron/glsp)
-- [Tree-sitter](https://tree-sitter.github.io/)
-- [Original Rust Implementation](https://github.com/vdemeester/tekton-lsp)
-
----
-
-**Status**: Phase 1 - Foundation  
-**Last Updated**: 2026-02-11
+Apache License 2.0 — See [LICENSE](LICENSE) for details.
