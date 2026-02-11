@@ -27,9 +27,11 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build
-        run: go build -v ./...
+        run: go build -v -o tekton-lsp ./cmd/tekton-lsp
       - name: Test
         run: go test -v -race ./...
+        env:
+          TEKTON_LSP_BINARY: ${{ github.workspace }}/tekton-lsp
 
   lint:
     name: lint

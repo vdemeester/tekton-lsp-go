@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,22 +14,27 @@ import (
 var testBinary string
 
 func TestMain(m *testing.M) {
-	// Build the binary once using a temp dir.
+	// Use pre-built binary if TEKTON_LSP_BINARY is set (e.g., in CI).
+	if bin := os.Getenv("TEKTON_LSP_BINARY"); bin != "" {
+		testBinary = bin
+		os.Exit(m.Run())
+	}
+
+	// Build the binary from source.
 	tmpDir, err := os.MkdirTemp("", "tekton-lsp-test-*")
 	if err != nil {
 		panic("mkdtemp: " + err.Error())
 	}
 
-	binary := tmpDir + "/tekton-lsp"
-
-	// Find module root (go.mod directory).
+	binary := filepath.Join(tmpDir, "tekton-lsp")
 	modRoot := findModuleRoot()
 
 	cmd := exec.Command("go", "build", "-o", binary, "./cmd/tekton-lsp")
 	cmd.Dir = modRoot
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		panic("failed to build binary: " + err.Error())
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		panic("failed to build binary in " + modRoot + ": " + err.Error() + "\n" + string(out))
 	}
 	testBinary = binary
 
@@ -39,6 +45,7 @@ func TestMain(m *testing.M) {
 }
 
 func findModuleRoot() string {
+	// Walk up from cwd to find go.mod.
 	dir, err := os.Getwd()
 	if err != nil {
 		panic("getwd: " + err.Error())
@@ -49,7 +56,24 @@ func findModuleRoot() string {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			panic("could not find go.mod")
+			break
+		}
+		dir = parent
+	}
+
+	// Fallback: use runtime.Caller to find source location.
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("cannot find module root")
+	}
+	dir = filepath.Dir(filename)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			panic("cannot find go.mod from " + filename)
 		}
 		dir = parent
 	}
