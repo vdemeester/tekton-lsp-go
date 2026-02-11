@@ -11,10 +11,10 @@ import (
 	"github.com/vdemeester/tekton-lsp-go/pkg/server"
 )
 
-const (
-	name    = "tekton-lsp"
-	version = "0.1.0-dev"
-)
+// Set via -ldflags at build time.
+var version = "dev"
+
+const name = "tekton-lsp"
 
 var (
 	showVersion = flag.Bool("version", false, "Show version and exit")

@@ -7,27 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial project structure
-- LSP server scaffold using GLSP framework
-- Document lifecycle handlers (didOpen, didChange, didClose)
-- CLI with stdio and TCP transport options
-- Makefile for building and testing
-- Basic test infrastructure
-
-### Phase 1 (In Progress)
-- [ ] Tree-sitter YAML parser integration
-- [ ] Document caching
-- [ ] Position conversion utilities
-
-## [0.1.0-dev] - 2026-02-11
+## [0.1.0] - 2026-02-11
 
 ### Added
-- Project initialization
-- Go module setup
-- Apache 2.0 license
-- README with roadmap
-- Architecture documentation
+- **LSP server** with GLSP framework (stdio and TCP transports)
+- **Tree-sitter YAML parser** with incremental parsing and error recovery
+- **Thread-safe document cache** for open documents
+- **Diagnostics & validation**
+  - Pipeline: tasks required, non-empty, correct type, unknown fields
+  - Task: steps required, non-empty, step image required
+  - Metadata: name required
+  - Param refs: `$(params.NAME)` validated against declared params
+  - taskRef: name required
+  - Duplicate task name detection
+- **Context-aware completion** for Pipeline, Task, Step, Metadata fields
+- **Hover documentation** for 30+ Tekton fields (markdown)
+- **Go-to-definition** for `taskRef` and `pipelineRef` across workspace
+- **Document symbols** (outline view) for Pipeline tasks, Task steps
+- **YAML formatting** with configurable indentation
+- **Code actions** (quick fixes) for missing and unknown fields
+- **Workspace scanning** — indexes YAML files on initialization
+- **101+ tests** (unit + integration) with race detector
+- **CI/CD** with GitHub Actions (build, lint, test)
 
-[Unreleased]: https://github.com/vdemeester/tekton-lsp-go/compare/HEAD
-[0.1.0-dev]: https://github.com/vdemeester/tekton-lsp-go/releases/tag/v0.1.0-dev
+[Unreleased]: https://github.com/vdemeester/tekton-lsp-go/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/vdemeester/tekton-lsp-go/releases/tag/v0.1.0
