@@ -17,10 +17,10 @@ func Format(content string, opts Options) (string, error) {
 		return "", nil
 	}
 
-	indent := opts.IndentSize
-	if indent <= 0 {
-		indent = 2
-	}
+	// YAML convention is 2-space indent. Always use 2 regardless of
+	// what the editor sends (tabSize can be 4 or 8 in many editors).
+	indent := 2
+	_ = opts.IndentSize // acknowledged but overridden
 
 	// Parse then re-serialize with consistent formatting.
 	var node yaml.Node

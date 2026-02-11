@@ -28,16 +28,26 @@ func (s *Server) didChange(context *glsp.Context, params *protocol.DidChangeText
 
 	log.Infof("Document changed: %s (v%d)", uri, version)
 
-	// With TextDocumentSyncKindFull, there's one change with full content
-	if len(params.ContentChanges) > 0 {
-		if textChange, ok := params.ContentChanges[0].(protocol.TextDocumentContentChangeEvent); ok {
-			s.cache.Update(uri, version, textChange.Text)
-		}
-	}
-
+	s.handleContentChange(uri, version, params.ContentChanges)
 	s.publishDiagnostics(context, uri)
 
 	return nil
+}
+
+// handleContentChange extracts the new content from change events and updates the cache.
+// GLSP delivers full-sync changes as TextDocumentContentChangeEventWhole
+// and partial-sync changes as TextDocumentContentChangeEvent.
+func (s *Server) handleContentChange(uri string, version int32, changes []any) {
+	if len(changes) == 0 {
+		return
+	}
+
+	switch change := changes[0].(type) {
+	case protocol.TextDocumentContentChangeEventWhole:
+		s.cache.Update(uri, version, change.Text)
+	case protocol.TextDocumentContentChangeEvent:
+		s.cache.Update(uri, version, change.Text)
+	}
 }
 
 // didClose handles the textDocument/didClose notification
