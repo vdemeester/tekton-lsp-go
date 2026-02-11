@@ -33,6 +33,12 @@ func (s *Server) initialize(context *glsp.Context, params *protocol.InitializePa
 
 	// Formatting
 	capabilities.DocumentFormattingProvider = true
+
+	// Go-to-definition
+	capabilities.DefinitionProvider = true
+
+	// Code Actions
+	capabilities.CodeActionProvider = true
 	// capabilities.HoverProvider = true
 	// capabilities.DefinitionProvider = true
 	// capabilities.DocumentSymbolProvider = true

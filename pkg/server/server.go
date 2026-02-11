@@ -40,6 +40,8 @@ func New(name, version string) *Server {
 		TextDocumentHover:          s.textDocumentHover,
 		TextDocumentDocumentSymbol: s.textDocumentDocumentSymbol,
 		TextDocumentFormatting:     s.textDocumentFormatting,
+		TextDocumentDefinition:     s.textDocumentDefinition,
+		TextDocumentCodeAction:     s.textDocumentCodeAction,
 	}
 
 	// Create GLSP server
