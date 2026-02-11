@@ -16,7 +16,7 @@ func (s *Server) didOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 
 	s.cache.Insert(uri, langID, version, text)
 
-	// TODO: Run validation and send diagnostics
+	s.publishDiagnostics(context, uri)
 
 	return nil
 }
@@ -35,7 +35,7 @@ func (s *Server) didChange(context *glsp.Context, params *protocol.DidChangeText
 		}
 	}
 
-	// TODO: Re-run validation and send diagnostics
+	s.publishDiagnostics(context, uri)
 
 	return nil
 }
