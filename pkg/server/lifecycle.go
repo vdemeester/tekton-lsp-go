@@ -27,6 +27,9 @@ func (s *Server) initialize(context *glsp.Context, params *protocol.InitializePa
 
 	// Hover
 	capabilities.HoverProvider = true
+
+	// Document Symbols
+	capabilities.DocumentSymbolProvider = true
 	// capabilities.HoverProvider = true
 	// capabilities.DefinitionProvider = true
 	// capabilities.DocumentSymbolProvider = true

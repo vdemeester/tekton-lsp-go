@@ -29,15 +29,16 @@ func New(name, version string) *Server {
 
 	// Initialize handler with lifecycle methods
 	s.handler = protocol.Handler{
-		Initialize:             s.initialize,
-		Initialized:            s.initialized,
-		Shutdown:               s.shutdown,
-		SetTrace:               s.setTrace,
-		TextDocumentDidOpen:    s.didOpen,
-		TextDocumentDidChange:  s.didChange,
-		TextDocumentDidClose:   s.didClose,
-		TextDocumentCompletion: s.textDocumentCompletion,
-		TextDocumentHover:      s.textDocumentHover,
+		Initialize:                 s.initialize,
+		Initialized:                s.initialized,
+		Shutdown:                   s.shutdown,
+		SetTrace:                   s.setTrace,
+		TextDocumentDidOpen:        s.didOpen,
+		TextDocumentDidChange:      s.didChange,
+		TextDocumentDidClose:       s.didClose,
+		TextDocumentCompletion:     s.textDocumentCompletion,
+		TextDocumentHover:          s.textDocumentHover,
+		TextDocumentDocumentSymbol: s.textDocumentDocumentSymbol,
 	}
 
 	// Create GLSP server
