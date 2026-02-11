@@ -29,12 +29,20 @@ build-release:
 	@echo "Release build complete: $(BINARY_NAME)"
 
 test:
-	@echo "Running tests..."
-	@$(GOTEST) -v ./...
+	@echo "Running unit tests..."
+	@$(GOTEST) -race -v ./pkg/...
+
+test-integration:
+	@echo "Running integration tests..."
+	@$(GOTEST) -race -v -timeout 60s ./test/integration/
+
+test-all:
+	@echo "Running all tests..."
+	@$(GOTEST) -race -v -timeout 60s ./...
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	@$(GOTEST) -v -coverprofile=coverage.out ./...
+	@$(GOTEST) -race -coverprofile=coverage.out ./pkg/...
 	@$(GOCMD) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
