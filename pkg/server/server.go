@@ -37,6 +37,7 @@ func New(name, version string) *Server {
 		TextDocumentDidChange:  s.didChange,
 		TextDocumentDidClose:   s.didClose,
 		TextDocumentCompletion: s.textDocumentCompletion,
+		TextDocumentHover:      s.textDocumentHover,
 	}
 
 	// Create GLSP server

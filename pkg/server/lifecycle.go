@@ -24,6 +24,9 @@ func (s *Server) initialize(context *glsp.Context, params *protocol.InitializePa
 	capabilities.CompletionProvider = &protocol.CompletionOptions{
 		TriggerCharacters: []string{":", "-", " "},
 	}
+
+	// Hover
+	capabilities.HoverProvider = true
 	// capabilities.HoverProvider = true
 	// capabilities.DefinitionProvider = true
 	// capabilities.DocumentSymbolProvider = true
