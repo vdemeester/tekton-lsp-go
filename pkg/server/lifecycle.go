@@ -20,10 +20,10 @@ func (s *Server) initialize(context *glsp.Context, params *protocol.InitializePa
 	// Configure text document sync
 	capabilities.TextDocumentSync = protocol.TextDocumentSyncKindFull
 
-	// TODO: Enable features as they're implemented
-	// capabilities.CompletionProvider = &protocol.CompletionOptions{
-	// 	TriggerCharacters: []string{":", "-", " "},
-	// }
+	// Completion
+	capabilities.CompletionProvider = &protocol.CompletionOptions{
+		TriggerCharacters: []string{":", "-", " "},
+	}
 	// capabilities.HoverProvider = true
 	// capabilities.DefinitionProvider = true
 	// capabilities.DocumentSymbolProvider = true
