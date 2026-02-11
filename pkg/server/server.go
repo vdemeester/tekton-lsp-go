@@ -4,6 +4,7 @@ import (
 	"github.com/tliron/commonlog"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/tliron/glsp/server"
+
 	"github.com/vdemeester/tekton-lsp-go/pkg/cache"
 )
 
