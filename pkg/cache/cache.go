@@ -6,13 +6,13 @@ import (
 	"github.com/vdemeester/tekton-lsp-go/pkg/parser"
 )
 
-// Entry represents a cached document with its raw content and parsed AST.
+// Entry represents a cached document with its raw content and parsed ASTs.
 type Entry struct {
 	URI        string
 	LanguageID string
 	Version    int32
 	Content    string
-	parsed     *parser.Document
+	parsed     []*parser.Document
 }
 
 // Cache is a thread-safe cache for open documents and their parsed ASTs.
@@ -30,7 +30,7 @@ func New() *Cache {
 
 // Insert adds or replaces a document in the cache and parses it.
 func (c *Cache) Insert(uri, languageID string, version int32, content string) {
-	parsed, _ := parser.ParseYAML(uri, content)
+	parsed, _ := parser.ParseAllYAML(uri, content)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -54,12 +54,24 @@ func (c *Cache) Get(uri string) (Entry, bool) {
 	return *e, true
 }
 
-// GetParsed returns the parsed document for a URI.
+// GetParsed returns the first parsed document for a URI.
+// Deprecated: Use GetAllParsed for multi-document support.
 func (c *Cache) GetParsed(uri string) (*parser.Document, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	e, ok := c.entries[uri]
-	if !ok || e.parsed == nil {
+	if !ok || len(e.parsed) == 0 {
+		return nil, false
+	}
+	return e.parsed[0], true
+}
+
+// GetAllParsed returns all parsed documents for a URI (multi-document YAML).
+func (c *Cache) GetAllParsed(uri string) ([]*parser.Document, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	e, ok := c.entries[uri]
+	if !ok || len(e.parsed) == 0 {
 		return nil, false
 	}
 	return e.parsed, true
@@ -67,7 +79,7 @@ func (c *Cache) GetParsed(uri string) (*parser.Document, bool) {
 
 // Update replaces the content and re-parses the document.
 func (c *Cache) Update(uri string, version int32, content string) {
-	parsed, _ := parser.ParseYAML(uri, content)
+	parsed, _ := parser.ParseAllYAML(uri, content)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -96,15 +108,13 @@ func (c *Cache) All() []Entry {
 	return result
 }
 
-// AllParsed returns all parsed documents.
+// AllParsed returns all parsed documents across all cached files.
 func (c *Cache) AllParsed() []*parser.Document {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*parser.Document, 0, len(c.entries))
+	var result []*parser.Document
 	for _, e := range c.entries {
-		if e.parsed != nil {
-			result = append(result, e.parsed)
-		}
+		result = append(result, e.parsed...)
 	}
 	return result
 }

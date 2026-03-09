@@ -9,17 +9,21 @@ import (
 
 // textDocumentDocumentSymbol handles the textDocument/documentSymbol request.
 func (s *Server) textDocumentDocumentSymbol(context *glsp.Context, params *protocol.DocumentSymbolParams) (any, error) {
-	parsed, ok := s.cache.GetParsed(params.TextDocument.URI)
+	docs, ok := s.cache.GetAllParsed(params.TextDocument.URI)
 	if !ok {
 		return nil, nil
 	}
 
-	syms := symbols.DocumentSymbols(parsed)
-	if len(syms) == 0 {
+	var allSyms []symbols.Symbol
+	for _, doc := range docs {
+		allSyms = append(allSyms, symbols.DocumentSymbols(doc)...)
+	}
+
+	if len(allSyms) == 0 {
 		return nil, nil
 	}
 
-	return convertSymbols(syms), nil
+	return convertSymbols(allSyms), nil
 }
 
 func convertSymbols(syms []symbols.Symbol) []protocol.DocumentSymbol {

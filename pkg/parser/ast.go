@@ -91,6 +91,8 @@ type Document struct {
 	APIVersion string
 	// Kind extracted for quick access.
 	Kind string
+	// Index is the 0-based position of this document within a multi-document YAML file.
+	Index int
 }
 
 // FindNodeAtPosition returns the most specific node at the given position.

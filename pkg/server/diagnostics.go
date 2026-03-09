@@ -7,15 +7,18 @@ import (
 	"github.com/vdemeester/tekton-lsp-go/pkg/validator"
 )
 
-// validateDocument runs validation on a cached document and returns LSP diagnostics.
+// validateDocument runs validation on all documents in a file and returns LSP diagnostics.
 func (s *Server) validateDocument(uri string) []protocol.Diagnostic {
-	parsed, ok := s.cache.GetParsed(uri)
+	docs, ok := s.cache.GetAllParsed(uri)
 	if !ok {
 		return []protocol.Diagnostic{}
 	}
 
-	diags := validator.Validate(parsed)
-	return convertDiagnostics(diags)
+	var allDiags []validator.Diagnostic
+	for _, doc := range docs {
+		allDiags = append(allDiags, validator.Validate(doc)...)
+	}
+	return convertDiagnostics(allDiags)
 }
 
 // publishDiagnostics sends diagnostics to the LSP client.
