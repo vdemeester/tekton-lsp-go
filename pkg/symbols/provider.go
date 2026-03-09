@@ -34,6 +34,8 @@ func DocumentSymbols(doc *parser.Document) []Symbol {
 	if metadata := doc.Root.Get("metadata"); metadata != nil {
 		if n := metadata.Get("name"); n != nil {
 			name = n.AsScalar()
+		} else if n := metadata.Get("generateName"); n != nil {
+			name = n.AsScalar()
 		}
 	}
 

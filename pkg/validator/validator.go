@@ -103,12 +103,12 @@ func validateMetadata(doc *parser.Document) []Diagnostic {
 		return diags
 	}
 
-	if metadata.Get("name") == nil {
+	if metadata.Get("name") == nil && metadata.Get("generateName") == nil {
 		diags = append(diags, Diagnostic{
 			Range:    metadata.Range,
 			Severity: SeverityError,
 			Source:   "tekton-lsp",
-			Message:  "Required field 'metadata.name' is missing",
+			Message:  "Required field 'metadata.name' or 'metadata.generateName' is missing",
 		})
 	}
 
