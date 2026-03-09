@@ -56,6 +56,76 @@ var knownTaskSpecFields = map[string]bool{
 	"stepTemplate": true,
 }
 
+// knownParamFields are the valid fields in a param definition.
+var knownParamFields = map[string]bool{
+	"name":        true,
+	"type":        true,
+	"description": true,
+	"default":     true,
+	"properties":  true,
+	"enum":        true,
+}
+
+// knownStepFields are the valid fields in a step definition.
+var knownStepFields = map[string]bool{
+	"name":            true,
+	"image":           true,
+	"command":         true,
+	"args":            true,
+	"script":          true,
+	"env":             true,
+	"envFrom":         true,
+	"workingDir":      true,
+	"volumeMounts":    true,
+	"resources":       true,
+	"securityContext": true,
+	"timeout":         true,
+	"onError":         true,
+	"stdoutConfig":    true,
+	"stderrConfig":    true,
+	"params":          true,
+	"ref":             true,
+	"computeResources": true,
+	"workspaces":      true,
+	"results":         true,
+}
+
+// knownWorkspaceFields are the valid fields in a workspace declaration.
+var knownWorkspaceFields = map[string]bool{
+	"name":        true,
+	"description": true,
+	"mountPath":   true,
+	"readOnly":    true,
+	"optional":    true,
+}
+
+// knownResultFields are the valid fields in a result definition.
+var knownResultFields = map[string]bool{
+	"name":        true,
+	"type":        true,
+	"description": true,
+	"properties":  true,
+	"value":       true,
+}
+
+// knownPipelineTaskFields are the valid fields in a pipeline task entry.
+var knownPipelineTaskFields = map[string]bool{
+	"name":         true,
+	"taskRef":      true,
+	"taskSpec":     true,
+	"runAfter":     true,
+	"params":       true,
+	"workspaces":   true,
+	"matrix":       true,
+	"when":         true,
+	"timeout":      true,
+	"retries":      true,
+	"onError":      true,
+	"displayName":  true,
+	"description":  true,
+	"pipelineRef":  true,
+}
+
 // isTektonResource checks if the document is a Tekton resource.
 func isTektonResource(doc *parser.Document) bool {
 	for _, prefix := range tektonAPIVersions {
@@ -154,6 +224,29 @@ func validatePipeline(doc *parser.Document) []Diagnostic {
 	// Validate individual tasks (taskRef.name, duplicate names)
 	diags = append(diags, validatePipelineTasks(tasks)...)
 
+	// Validate pipeline task fields
+	diags = append(diags, validateSequenceItems(tasks, knownPipelineTaskFields, "pipeline task")...)
+
+	// Validate param fields
+	if params := spec.Get("params"); params != nil {
+		diags = append(diags, validateSequenceItems(params, knownParamFields, "param")...)
+	}
+
+	// Validate workspace fields
+	if workspaces := spec.Get("workspaces"); workspaces != nil {
+		diags = append(diags, validateSequenceItems(workspaces, knownWorkspaceFields, "workspace")...)
+	}
+
+	// Validate result fields
+	if results := spec.Get("results"); results != nil {
+		diags = append(diags, validateSequenceItems(results, knownResultFields, "result")...)
+	}
+
+	// Validate finally task fields
+	if finally := spec.Get("finally"); finally != nil && finally.IsSequence() {
+		diags = append(diags, validateSequenceItems(finally, knownPipelineTaskFields, "finally task")...)
+	}
+
 	// Validate param references
 	declaredParams := collectDeclaredParams(spec)
 	diags = append(diags, findParamRefs(tasks, declaredParams)...)
@@ -203,8 +296,24 @@ func validateTask(doc *parser.Document) []Diagnostic {
 		})
 	}
 
-	// Validate step images
+	// Validate step fields
 	diags = append(diags, validateStepImages(steps)...)
+	diags = append(diags, validateSequenceItems(steps, knownStepFields, "step")...)
+
+	// Validate param fields
+	if params := spec.Get("params"); params != nil {
+		diags = append(diags, validateSequenceItems(params, knownParamFields, "param")...)
+	}
+
+	// Validate workspace fields
+	if workspaces := spec.Get("workspaces"); workspaces != nil {
+		diags = append(diags, validateSequenceItems(workspaces, knownWorkspaceFields, "workspace")...)
+	}
+
+	// Validate result fields
+	if results := spec.Get("results"); results != nil {
+		diags = append(diags, validateSequenceItems(results, knownResultFields, "result")...)
+	}
 
 	// Validate param references
 	declaredParams := collectDeclaredParams(spec)
@@ -214,6 +323,10 @@ func validateTask(doc *parser.Document) []Diagnostic {
 }
 
 func checkUnknownFields(node *parser.Node, knownFields map[string]bool) []Diagnostic {
+	return checkUnknownFieldsContext(node, knownFields, "spec")
+}
+
+func checkUnknownFieldsContext(node *parser.Node, knownFields map[string]bool, context string) []Diagnostic {
 	var diags []Diagnostic
 
 	if !node.IsMapping() {
@@ -226,10 +339,24 @@ func checkUnknownFields(node *parser.Node, knownFields map[string]bool) []Diagno
 				Range:    child.Range,
 				Severity: SeverityWarning,
 				Source:   "tekton-lsp",
-				Message:  fmt.Sprintf("Unknown field '%s' in spec", key),
+				Message:  fmt.Sprintf("Unknown field '%s' in %s", key, context),
 			})
 		}
 	}
 
+	return diags
+}
+
+// validateSequenceItems validates each item in a sequence against known fields.
+func validateSequenceItems(node *parser.Node, knownFields map[string]bool, context string) []Diagnostic {
+	var diags []Diagnostic
+	if node == nil || !node.IsSequence() {
+		return diags
+	}
+	for _, item := range node.AsSequence() {
+		if item.IsMapping() {
+			diags = append(diags, checkUnknownFieldsContext(item, knownFields, context)...)
+		}
+	}
 	return diags
 }
