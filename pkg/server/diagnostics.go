@@ -11,7 +11,7 @@ import (
 func (s *Server) validateDocument(uri string) []protocol.Diagnostic {
 	parsed, ok := s.cache.GetParsed(uri)
 	if !ok {
-		return nil
+		return []protocol.Diagnostic{}
 	}
 
 	diags := validator.Validate(parsed)
@@ -31,7 +31,7 @@ func (s *Server) publishDiagnostics(context *glsp.Context, uri string) {
 // convertDiagnostics converts our validator diagnostics to LSP protocol diagnostics.
 func convertDiagnostics(diags []validator.Diagnostic) []protocol.Diagnostic {
 	if len(diags) == 0 {
-		return nil
+		return []protocol.Diagnostic{}
 	}
 
 	result := make([]protocol.Diagnostic, len(diags))
