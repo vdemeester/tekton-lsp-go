@@ -10,15 +10,24 @@ import (
 
 // textDocumentDefinition handles the textDocument/definition request.
 func (s *Server) textDocumentDefinition(context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
-	parsed, ok := s.cache.GetParsed(params.TextDocument.URI)
+	docs, ok := s.cache.GetAllParsed(params.TextDocument.URI)
 	if !ok {
 		return nil, nil
 	}
 
-	loc := definition.GotoDefinition(parsed, parser.Position{
+	pos := parser.Position{
 		Line:      params.Position.Line,
 		Character: params.Position.Character,
-	}, s.cache)
+	}
+
+	// Try each document — the position will only match one.
+	var loc *definition.Location
+	for _, doc := range docs {
+		if l := definition.GotoDefinition(doc, pos, s.cache); l != nil {
+			loc = l
+			break
+		}
+	}
 
 	if loc == nil {
 		return nil, nil

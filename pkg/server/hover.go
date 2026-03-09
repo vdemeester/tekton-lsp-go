@@ -10,15 +10,24 @@ import (
 
 // textDocumentHover handles the textDocument/hover request.
 func (s *Server) textDocumentHover(context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
-	parsed, ok := s.cache.GetParsed(params.TextDocument.URI)
+	docs, ok := s.cache.GetAllParsed(params.TextDocument.URI)
 	if !ok {
 		return nil, nil
 	}
 
-	result := hover.Hover(parsed, parser.Position{
+	pos := parser.Position{
 		Line:      params.Position.Line,
 		Character: params.Position.Character,
-	})
+	}
+
+	// Try each document — the position will only match one.
+	var result *hover.HoverResult
+	for _, doc := range docs {
+		if r := hover.Hover(doc, pos); r != nil {
+			result = r
+			break
+		}
+	}
 
 	if result == nil {
 		return nil, nil

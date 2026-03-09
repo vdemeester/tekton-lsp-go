@@ -10,13 +10,16 @@ import (
 
 // textDocumentCodeAction handles the textDocument/codeAction request.
 func (s *Server) textDocumentCodeAction(context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
-	parsed, ok := s.cache.GetParsed(params.TextDocument.URI)
+	docs, ok := s.cache.GetAllParsed(params.TextDocument.URI)
 	if !ok {
 		return nil, nil
 	}
 
-	diags := validator.Validate(parsed)
-	codeActions := actions.CodeActions(params.TextDocument.URI, diags)
+	var allDiags []validator.Diagnostic
+	for _, doc := range docs {
+		allDiags = append(allDiags, validator.Validate(doc)...)
+	}
+	codeActions := actions.CodeActions(params.TextDocument.URI, allDiags)
 
 	if len(codeActions) == 0 {
 		return nil, nil

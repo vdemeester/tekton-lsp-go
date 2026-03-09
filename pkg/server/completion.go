@@ -15,15 +15,24 @@ func (s *Server) textDocumentCompletion(context *glsp.Context, params *protocol.
 
 // handleCompletion returns completion items for a position in a document.
 func (s *Server) handleCompletion(uri string, pos protocol.Position) any {
-	parsed, ok := s.cache.GetParsed(uri)
+	docs, ok := s.cache.GetAllParsed(uri)
 	if !ok {
 		return nil
 	}
 
-	items := completion.Complete(parsed, parser.Position{
+	parserPos := parser.Position{
 		Line:      pos.Line,
 		Character: pos.Character,
-	})
+	}
+
+	// Try each document — the position will only match one.
+	var items []completion.CompletionItem
+	for _, doc := range docs {
+		if result := completion.Complete(doc, parserPos); len(result) > 0 {
+			items = result
+			break
+		}
+	}
 
 	if len(items) == 0 {
 		return nil

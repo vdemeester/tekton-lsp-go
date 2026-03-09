@@ -8,7 +8,21 @@ import (
 )
 
 // ParseYAML parses YAML content into a Document with position tracking using tree-sitter.
+// Deprecated: Use ParseAllYAML for multi-document support. This returns only the first document.
 func ParseYAML(filename, content string) (*Document, error) {
+	docs, err := ParseAllYAML(filename, content)
+	if err != nil {
+		return nil, err
+	}
+	if len(docs) == 0 {
+		return nil, fmt.Errorf("no documents found")
+	}
+	return docs[0], nil
+}
+
+// ParseAllYAML parses YAML content into multiple Documents (one per --- separated document)
+// with position tracking using tree-sitter.
+func ParseAllYAML(filename, content string) ([]*Document, error) {
 	if content == "" {
 		return nil, fmt.Errorf("empty content")
 	}
@@ -28,9 +42,73 @@ func ParseYAML(filename, content string) (*Document, error) {
 	defer tree.Close()
 
 	rootNode := tree.RootNode()
-	root, err := buildAST(rootNode, []byte(content), "")
+	contentBytes := []byte(content)
+
+	return buildDocuments(rootNode, contentBytes, filename)
+}
+
+// buildDocuments extracts all YAML documents from the tree-sitter stream node.
+func buildDocuments(rootNode *tree_sitter.Node, content []byte, filename string) ([]*Document, error) {
+	var docs []*Document
+
+	// tree-sitter YAML produces: stream -> document* -> block_node -> block_mapping
+	// For single-doc files: stream has 1 document child.
+	// For multi-doc files: stream has N document children.
+	if rootNode.Kind() != "stream" {
+		// Shouldn't happen, but handle gracefully.
+		doc, err := buildSingleDocument(rootNode, content, filename, 0)
+		if err != nil {
+			return nil, err
+		}
+		if doc != nil {
+			docs = append(docs, doc)
+		}
+		return docs, nil
+	}
+
+	for i := uint(0); i < rootNode.ChildCount(); i++ {
+		child := rootNode.Child(i)
+		if child.Kind() != "document" {
+			continue
+		}
+		doc, err := buildSingleDocument(child, content, filename, int(i))
+		if err != nil {
+			return nil, err
+		}
+		if doc != nil {
+			docs = append(docs, doc)
+		}
+	}
+
+	return docs, nil
+}
+
+// buildSingleDocument builds a Document from a tree-sitter "document" node.
+func buildSingleDocument(docNode *tree_sitter.Node, content []byte, filename string, index int) (*Document, error) {
+	// Find the content node (skip "---" separator).
+	var contentNode *tree_sitter.Node
+	for j := uint(0); j < docNode.ChildCount(); j++ {
+		child := docNode.Child(j)
+		if child.Kind() != "---" {
+			contentNode = child
+			break
+		}
+	}
+	// For document nodes with only "---" and no content, skip.
+	if contentNode == nil {
+		if docNode.ChildCount() == 0 {
+			return nil, nil
+		}
+		// Single-child document (no ---), use it directly.
+		contentNode = docNode
+	}
+
+	root, err := buildAST(contentNode, content, "")
 	if err != nil {
 		return nil, err
+	}
+	if root == nil {
+		return nil, nil
 	}
 
 	// Extract common Tekton fields for quick access.
@@ -47,6 +125,7 @@ func ParseYAML(filename, content string) (*Document, error) {
 		Root:       root,
 		APIVersion: apiVersion,
 		Kind:       kind,
+		Index:      index,
 	}, nil
 }
 
@@ -56,8 +135,25 @@ func buildAST(tsNode *tree_sitter.Node, content []byte, key string) (*Node, erro
 	kind := tsNode.Kind()
 
 	switch kind {
-	case "stream", "document":
-		// Root wrappers — recurse into first child.
+	case "stream":
+		// For backward compat when called directly, take first child.
+		if tsNode.ChildCount() > 0 {
+			return buildAST(tsNode.Child(0), content, key)
+		}
+		return &Node{Key: key, Kind: NodeKindNull, Range: r}, nil
+
+	case "document":
+		// Skip "---" separator, recurse into content.
+		for i := uint(0); i < tsNode.ChildCount(); i++ {
+			child := tsNode.Child(i)
+			if child.Kind() != "---" {
+				return buildAST(child, content, key)
+			}
+		}
+		return &Node{Key: key, Kind: NodeKindNull, Range: r}, nil
+
+	case "block_node":
+		// Wrapper — recurse into first child.
 		if tsNode.ChildCount() > 0 {
 			return buildAST(tsNode.Child(0), content, key)
 		}
