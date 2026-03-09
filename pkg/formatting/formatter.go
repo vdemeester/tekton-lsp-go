@@ -2,6 +2,8 @@ package formatting
 
 import (
 	"bytes"
+	"io"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,6 +14,7 @@ type Options struct {
 }
 
 // Format reformats YAML content with consistent indentation.
+// Handles multi-document YAML files (separated by ---).
 func Format(content string, opts Options) (string, error) {
 	if content == "" {
 		return "", nil
@@ -22,18 +25,26 @@ func Format(content string, opts Options) (string, error) {
 	indent := 2
 	_ = opts.IndentSize // acknowledged but overridden
 
-	// Parse then re-serialize with consistent formatting.
-	var node yaml.Node
-	if err := yaml.Unmarshal([]byte(content), &node); err != nil {
-		return "", err
-	}
+	// Use Decoder to handle multiple YAML documents in one file.
+	dec := yaml.NewDecoder(strings.NewReader(content))
 
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(indent)
-	if err := enc.Encode(&node); err != nil {
-		return "", err
+
+	for {
+		var node yaml.Node
+		if err := dec.Decode(&node); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", err
+		}
+		if err := enc.Encode(&node); err != nil {
+			return "", err
+		}
 	}
+
 	if err := enc.Close(); err != nil {
 		return "", err
 	}
