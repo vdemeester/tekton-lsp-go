@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-09
+
+### Fixed
+- Return empty diagnostics array instead of nil, fixing Neovim crash on `publishDiagnostics`
+- Diagnostics not updating on document change; formatting using wrong indentation
+
+### Changed
+- Improved Neovim editor setup example in README (smart auto-attach, root_dir, coexistence with yamlls)
+
 ## [0.1.0] - 2026-02-11
 
 ### Added
@@ -30,5 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **101+ tests** (unit + integration) with race detector
 - **CI/CD** with GitHub Actions (build, lint, test)
 
-[Unreleased]: https://github.com/vdemeester/tekton-lsp-go/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/vdemeester/tekton-lsp-go/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/vdemeester/tekton-lsp-go/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/vdemeester/tekton-lsp-go/releases/tag/v0.1.0
