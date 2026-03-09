@@ -49,28 +49,42 @@ go test -race ./...
 
 ## Editor Setup
 
+The LSP server communicates over stdio by default and works with any editor that supports the Language Server Protocol. The `tekton-lsp` binary must be in your `$PATH`.
+
+### Neovim
+
+Auto-attach `tekton-lsp` only to YAML files that contain a Tekton `apiVersion`. This works alongside `yamlls` without conflicts — `tekton-lsp` handles Tekton semantics while `yamlls` handles general YAML.
+
+```lua
+vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
+  group = vim.api.nvim_create_augroup("tekton_lsp_attach", { clear = true }),
+  pattern = { "*.yaml", "*.yml" },
+  callback = function(ev)
+    local lines = vim.api.nvim_buf_get_lines(ev.buf, 0, 50, false)
+    for _, line in ipairs(lines) do
+      if line:match("tekton%.dev") or line:match("triggers%.tekton%.dev") then
+        vim.lsp.start({
+          name = "tekton-lsp",
+          cmd = { "tekton-lsp" },
+          root_dir = vim.fs.root(ev.buf, { ".git" }) or vim.fn.getcwd(),
+        })
+        return
+      end
+    end
+  end,
+})
+```
+
+> **Note:** Setting `root_dir` to the git root enables cross-file features like go-to-definition from `taskRef`/`pipelineRef` to Task/Pipeline definitions elsewhere in the workspace.
+
 ### VS Code
 
 Add to `.vscode/settings.json`:
 ```json
 {
   "yaml.customTags": [],
-  "tekton-lsp.path": "/path/to/tekton-lsp"
+  "tekton-lsp.path": "tekton-lsp"
 }
-```
-
-### Neovim (nvim-lspconfig)
-
-```lua
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "yaml",
-  callback = function()
-    vim.lsp.start({
-      name = "tekton-lsp",
-      cmd = { "/path/to/tekton-lsp" },
-    })
-  end,
-})
 ```
 
 ## Architecture
