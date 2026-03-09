@@ -77,6 +77,27 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
 
 > **Note:** Setting `root_dir` to the git root enables cross-file features like go-to-definition from `taskRef`/`pipelineRef` to Task/Pipeline definitions elsewhere in the workspace.
 
+### Emacs (eglot)
+
+Register `tekton-lsp` for `yaml-ts-mode` (or `yaml-mode`) and auto-start only on Tekton files:
+
+```elisp
+(defun maybe-start-tekton-lsp ()
+  "Start tekton-lsp via eglot if the buffer contains a Tekton apiVersion."
+  (when (save-excursion
+          (goto-char (point-min))
+          (re-search-forward "tekton\\.dev\\|triggers\\.tekton\\.dev" nil t))
+    (eglot-ensure)))
+
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(yaml-ts-mode . ("tekton-lsp"))))
+
+(add-hook 'yaml-ts-mode-hook #'maybe-start-tekton-lsp)
+```
+
+> **Note:** eglot supports one server per major-mode. If you also use `yamlls`, you may want to use `eglot-alternatives` or only enable `tekton-lsp` for Tekton files as shown above.
+
 ### VS Code
 
 Add to `.vscode/settings.json`:
